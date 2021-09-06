@@ -19,6 +19,9 @@ import com.daniallio.webapp.entities.Oggetti;
 import com.daniallio.webapp.entities.OggettiDTO;
 import com.daniallio.webapp.entities.Stanza;
 import com.daniallio.webapp.entities.Tipi;
+import com.daniallio.webapp.exceptions.OggettoExistException;
+import com.daniallio.webapp.exceptions.StanzaNotFoundException;
+import com.daniallio.webapp.exceptions.TipoNotFoundException;
 import com.daniallio.webapp.services.OggettoService;
 import com.daniallio.webapp.services.StanzaService;
 import com.daniallio.webapp.services.TipiService;
@@ -58,29 +61,55 @@ public class OggettoController {
 		
 	}
 	
-	//inserisco un oggetto
-	//DA SISTEMARE
+	//inserisco un nuovo oggetto	
 	@PostMapping(value="/inserisci", produces = "application/json")
-	public ResponseEntity<OggettiDTO> insOggetto (@RequestBody OggettiDTO oggDTO){
+	public ResponseEntity<OggettiDTO> insOggetto (@RequestBody OggettiDTO oggDTO) throws OggettoExistException,TipoNotFoundException,StanzaNotFoundException{
+		
+		logger.info("********Meedoto insOggetto. Stanza con ID " + oggDTO.getCodice());
+		
+		Optional <Tipi> tipoOpt;
+		Optional <Stanza> stanzaOpt;
 		
 		
-		Oggetti oggetto = new Oggetti();
+		//verifico che non sia già presente a sistema
+		Optional <Oggetti> optOggetto = serviceOggetto.selOggettoById(oggDTO.getCodice());
 		
-		Optional <Stanza> stanza = serviceStanza.selStanzaById(oggDTO.getStanza());
-		Optional <Tipi> tipo = serviceTipo.selTipoById(oggDTO.getTipo());
+		if(optOggetto.isPresent()) { //in caso esista eccezione
+			
+			throw new OggettoExistException("L'oggetto con codice " + oggDTO.getCodice() + " è già esistente");
+			
+		} //verifico che esistano la Stanza e il tipo
+			
+			stanzaOpt = serviceStanza.selStanzaById(oggDTO.getStanza());
+			
+			if(!stanzaOpt.isPresent()) {//verifico stanza
+				
+				throw new StanzaNotFoundException("Codice stanza non corretto");
+				
+			}else { //verifico tipo
+				
+				tipoOpt = serviceTipo.selTipoById(oggDTO.getTipo());
+				if(!tipoOpt.isPresent()) {
+					throw new TipoNotFoundException("Codice tipo non corretto");
+				}
+				
+				
+			}
+				
+			Oggetti oggetto = new Oggetti();			
+			oggetto.setAttivo(oggDTO.isAttivo());
+			oggetto.setCodice(oggDTO.getCodice());
+			oggetto.setDataAcquisto(oggDTO.getDataAcquisto());
+			oggetto.setDescrizione(oggDTO.getDescrizione());
+			oggetto.setNote(oggDTO.getNote());
+			oggetto.setStanza(stanzaOpt.get());
+			oggetto.setTipo(tipoOpt.get());
+			oggetto.setValore(oggDTO.getValore());
+
 		
-		oggetto.setAttivo(oggDTO.isAttivo());
-		oggetto.setCodice(oggDTO.getCodice());
-		oggetto.setDataAcquisto(oggDTO.getDataAcquisto());
-		oggetto.setDescrizione(oggDTO.getDescrizione());
-		oggetto.setNote(oggDTO.getNote());
-		oggetto.setStanza(stanza.get());
-		oggetto.setTipo(tipo.get());
-		oggetto.setValore(oggDTO.getValore());
+			serviceOggetto.insOggetto(oggetto);
 		
-		serviceOggetto.insOggetto(oggetto);
-		
-		return new ResponseEntity<OggettiDTO>(oggDTO,HttpStatus.OK);
+			return new ResponseEntity<OggettiDTO>(oggDTO,HttpStatus.OK);
 		
 		
 	}
