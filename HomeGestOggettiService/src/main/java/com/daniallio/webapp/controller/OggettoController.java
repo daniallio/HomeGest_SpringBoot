@@ -12,6 +12,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 
@@ -20,6 +21,7 @@ import com.daniallio.webapp.entities.OggettiDTO;
 import com.daniallio.webapp.entities.Stanza;
 import com.daniallio.webapp.entities.Tipi;
 import com.daniallio.webapp.exceptions.OggettoExistException;
+import com.daniallio.webapp.exceptions.OggettoNotFoundException;
 import com.daniallio.webapp.exceptions.StanzaNotFoundException;
 import com.daniallio.webapp.exceptions.TipoNotFoundException;
 import com.daniallio.webapp.services.OggettoService;
@@ -110,6 +112,62 @@ public class OggettoController {
 			serviceOggetto.insOggetto(oggetto);
 		
 			return new ResponseEntity<OggettiDTO>(oggDTO,HttpStatus.OK);
+		
+		
+	}
+	
+	
+	
+	//aggiorno oggetto
+	@PutMapping(value ="/aggiorna", produces = "application/json")
+	public ResponseEntity<OggettiDTO> updOggetto (@RequestBody OggettiDTO oggDTO) throws OggettoNotFoundException, StanzaNotFoundException, TipoNotFoundException{
+		
+		
+		logger.info("********Medoto updOggetto. Oggetto con ID " + oggDTO.getCodice());
+		
+		Optional <Tipi> tipoOpt;
+		Optional <Stanza> stanzaOpt;
+		//verifico l'esistenza dell'oggetto
+		Optional<Oggetti> oggOpt = serviceOggetto.selOggettoById(oggDTO.getCodice());
+		
+		if(!oggOpt.isPresent()) {
+			throw new OggettoNotFoundException("L'oggetto " +  oggDTO.getCodice() + " non è esistente");
+		}
+		
+		
+		stanzaOpt = serviceStanza.selStanzaById(oggDTO.getStanza());
+		
+		if(!stanzaOpt.isPresent()) {//verifico stanza
+			
+			throw new StanzaNotFoundException("Codice stanza non corretto");
+			
+		}else { //verifico tipo
+			
+			tipoOpt = serviceTipo.selTipoById(oggDTO.getTipo());
+			if(!tipoOpt.isPresent()) {
+				throw new TipoNotFoundException("Codice tipo non corretto");
+			}
+			
+			
+		}
+		
+		
+		
+		
+		
+		Oggetti oggetto = new Oggetti();			
+		oggetto.setAttivo(oggDTO.isAttivo());
+		oggetto.setCodice(oggDTO.getCodice());
+		oggetto.setDataAcquisto(oggDTO.getDataAcquisto());
+		oggetto.setDescrizione(oggDTO.getDescrizione());
+		oggetto.setNote(oggDTO.getNote());
+		oggetto.setStanza(stanzaOpt.get());
+		oggetto.setTipo(tipoOpt.get());
+		oggetto.setValore(oggDTO.getValore());
+		
+		serviceOggetto.insOggetto(oggetto);
+		
+		return new ResponseEntity<OggettiDTO>(oggDTO,HttpStatus.OK);
 		
 		
 	}
